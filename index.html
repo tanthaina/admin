@@ -435,7 +435,7 @@
     }
 
     // 🚨 Global Fetch Interceptor (เกราะป้องกันแอปหมุนค้างตลอดกาลในทุกๆ จุด)
-    const originalFetch = window.fetch.bind(window);
+    const originalFetch = window.fetch;
     window.fetch = async function(url, options) {
         if (url && typeof url === 'string' && url.includes("script.google.com")) {
             options = options || {};
@@ -505,7 +505,7 @@
         try {
             // 🛡️ ป้องกัน LIFF ค้างตลอดกาลด้วย Promise.race (ตัดจบใน 12 วินาที)
             const liffInit = liff.init({ liffId: MY_LIFF_ID });
-            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF Init Timeout")), 20000));
+            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF Init Timeout")), 12000));
             await Promise.race([liffInit, initTimeout]);
             
             if (liff.isLoggedIn()) {
@@ -540,12 +540,7 @@
 
                 // 🌟 ปิดหน้าโหลดรวม แล้วเปิดหน้าแรกให้เห็นรูปโปรไฟล์ทันที (ไม่ต้องรอหลังบ้าน)
                 document.getElementById('loadingSec').style.display = 'none';
-                if (isAdminGlobal) {
-                    switchTab('admin');
-                    loadAdminData();
-                } else {
-                    document.getElementById('checkinTab').style.display = 'block';
-                }
+                document.getElementById('checkinTab').style.display = 'block';
 
                 // 🌟 ย้ายการเช็คคู่มือมาไว้ตรงนี้ ให้เด้งทันทีไม่ต้องรอเซิร์ฟเวอร์ (User Experience ดีขึ้น)
                 try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
@@ -595,11 +590,6 @@
             
             if (result.isAdmin) { 
                 isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; 
-                // 🌟 เด้งเข้าแท็บแอดมินอัตโนมัติเมื่อตรวจสอบสิทธิ์ผ่าน
-                if (!window.hasSwitchedTabManually && document.getElementById('adminTab').style.display !== 'block') {
-                    switchTab('admin');
-                    loadAdminData();
-                }
             } else { 
                 isAdminGlobal = false; document.getElementById('tabAdminBtn').style.display = 'none'; 
                 // 🛡️ กันเหนียว: ถ้าโดนปลดสิทธิ์แต่แอบกดเข้าแท็บแอดมินไปแล้ว ให้เด้งกลับหน้าแรกทันที
@@ -715,22 +705,16 @@
         if (res.hasUnpaid || res.isWaiting) {
             document.getElementById('paymentSec').style.display = 'block';
             if (res.isWaiting && res.hasUnpaid) {
-                btnPay.disabled = false; btnPay.style.backgroundColor = "#eab308";
+                btnPay.disabled = true; btnPay.style.backgroundColor = "#9ca3af";
                 warnTxt.style.display = 'block';
-                warnTxt.style.color = "#ea580c";
-                warnTxt.innerText = "⚠️ มีเพื่อนมาเพิ่ม สามารถอัพสลิปใหม่เพื่อรวมยอดทั้งหมดได้ครับ";
-                btnPay.innerText = "🔄 อัพสลิปใหม่ (รวมยอดทั้งหมด)";
+                btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
             } else if (res.isWaiting) {
-                btnPay.disabled = false; btnPay.style.backgroundColor = "#eab308";
-                warnTxt.style.display = 'block';
-                warnTxt.style.color = "#16a34a";
-                warnTxt.innerText = "✅ ระบบได้รับสลิปแล้ว หากอัพผิดแก้ไขใหม่ได้ครับ";
-                btnPay.innerText = "🔄 อัพสลิปใหม่ (แทนที่ใบเดิม)";
+                btnPay.disabled = true; btnPay.style.backgroundColor = "#eab308";
+                warnTxt.style.display = 'none';
+                btnPay.innerText = "⏳ รอแอดมินตรวจสลิปใบล่าสุด";
             } else {
                 btnPay.disabled = false; btnPay.style.backgroundColor = "var(--primary)";
                 warnTxt.style.display = 'none';
-                warnTxt.style.color = "#ea580c";
-                warnTxt.innerText = "⏳ กรุณารอแอดมินตรวจสลิปใบก่อนหน้าให้เสร็จ ถึงจะส่งสลิปยอดใหม่ได้ครับ";
                 btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
             }
         } else { document.getElementById('paymentSec').style.display = 'none'; }
@@ -756,7 +740,6 @@
     }
 
     function switchTab(target) {
-        window.hasSwitchedTabManually = true; // 🌟 จำไว้ว่าผู้ใช้กดเปลี่ยนแท็บเองแล้ว
         ['checkin', 'dashboard', 'admin'].forEach(t => {
             let tab = document.getElementById(t + 'Tab');
             if (t === target) {
@@ -1107,14 +1090,13 @@
                                 const slipThumbUrl = matchId ? `https://drive.google.com/thumbnail?id=${matchId[0]}&sz=w100` : "";
                             let membersHtml = "";
                             group.members.forEach(m => {
-                                let individualActionBtn = m.status === "⚠️ ขอลบรายการ" 
-                                    ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'delete', this)">🗑️ ลบคนนี้</button> <button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectSlip', this)">↩️ ดึงกลับค้างจ่าย</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` 
-                                    : `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'delete', this)">🗑️ ลบ</button> <button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectPaySingle', this)">↩️ แยกค้างจ่าย</button>`;
+                                let reqDeleteBtn = m.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'delete', this)">🗑️ อนุมัติลบ</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
                                 let promoteBtn = (!m.uid.includes("FRIEND_OF_") && m.name !== "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${m.time}', '${m.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${m.time}', '${m.uid}', 'promote_yearly', this)">👑 รายปี</button>` : '';
                                 membersHtml += `<div class="admin-sub-item" style="display:block;">
                                     <div style="margin-bottom:4px;"><span>${m.name} (${m.cost} บ.)</span> <span style="color:#ef4444; font-size:11px; font-weight:bold; margin-left:5px;">[${m.status}]</span></div>
                                     <div>
-                                        ${individualActionBtn}
+                                        ${reqDeleteBtn}
+                                        <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${m.time}', '${m.uid}', 'confirmPay', this)">✅ รับ</button>
                                         ${promoteBtn}
                                         <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${m.time}', '${m.uid}', 'write_off', this)">🧹 ยกหนี้</button>
                                     </div>
@@ -1134,17 +1116,15 @@
                                     <button class="admin-action-btn" style="background:#16a34a; flex:1; padding:8px;" onclick="adminAction('${firstMember.time}', '${firstMember.uid}', 'confirmPay', this)">✅ อนุมัติสลิป</button>
                                     <button class="admin-action-btn" style="background:#ef4444; flex:1; padding:8px;" onclick="adminAction('${firstMember.time}', '${firstMember.uid}', 'rejectSlip', this)">❌ ปฏิเสธสลิป</button>
                                 </div>
-                                <div style="text-align:center; font-size:12px; margin-top:5px; color:#6b7280;">จัดการแยกรายบุคคล (เฉพาะลบ/แยกค้างจ่าย):</div>
+                                <div style="text-align:center; font-size:12px; margin-top:5px; color:#6b7280;">หรือจัดการแยกคน:</div>
                                 <div class="admin-sub-items-container">${membersHtml}</div>
                             </div>`;
                         } else { // Individual, no slip
                             const u = group.members[0];
-                            let individualActionBtn = u.status === "⚠️ ขอลบรายการ" 
-                                ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${u.time}', '${u.uid}', 'delete', this)">🗑️ ลบคนนี้</button> <button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectSlip', this)">↩️ ดึงกลับค้างจ่าย</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` 
-                                : `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${u.time}', '${u.uid}', 'delete', this)">🗑️ ลบ</button>`;
+                            let reqDeleteBtn = u.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${u.time}', '${u.uid}', 'delete', this)">🗑️ อนุมัติลบ</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
                             let promoteBtn = (!u.uid.includes("FRIEND_OF_") && u.name !== "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${u.time}', '${u.uid}', 'promote_yearly', this)">👑 รายปี</button>` : '';
                             let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold; word-break: break-all;">📝 หมายเหตุ: ${u.note}</div>` : '';
-                            upHTML += `<div class="admin-individual-card"><div style="display:flex; align-items:flex-start; gap:8px;"><input type="checkbox" class="batch-approve-cb" data-time="${u.time}" data-uid="${u.uid}" onchange="updateBatchBar()" style="width:20px; height:20px; flex-shrink:0; margin-top:3px; accent-color:#16a34a;"><div style="flex:1;"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${individualActionBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ รับ</button> ${promoteBtn} <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div></div></div>`;
+                            upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${reqDeleteBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ รับ</button> ${promoteBtn} <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div>`;
                         }
                     }
                 unpaidArea.innerHTML = upHTML ? `<div class="fade-in">${upHTML}</div>` : "ไม่มีรายการค้างชำระ";
@@ -1389,6 +1369,27 @@
             imgEl.onerror = function() { document.getElementById('modalLoader').style.display = 'none'; document.getElementById('modalFallbackBtn').style.display = 'block'; document.getElementById('modalFallbackBtn').onclick = () => window.open(driveUrl, '_blank'); };
             imgEl.src = "https://drive.google.com/thumbnail?id=" + fileIdMatch[0] + "&sz=w800&t=" + new Date().getTime();
         } else { window.open(driveUrl, '_blank'); } 
+    }
+
+    function closeSlipModal() {
+        document.getElementById('slipModal').style.display = 'none';
+        document.getElementById('modalImg').src = "";
+        currentModalActiveRow = null;
+    }
+
+    function copyDebtList() {
+        if (!globalUnpaidList || globalUnpaidList.length === 0) {
+            showToast("ไม่มีรายการค้างชำระ", "error");
+            return;
+        }
+        let msg = "🔴 *รายชื่อยอดค้างชำระ*\n\n";
+        let total = 0;
+        globalUnpaidList.forEach(item => {
+            msg += `- ${item.name} (${item.cost} บ.)\n`;
+            total += parseInt(item.cost) || 0;
+        });
+        msg += `\n💰 รวมทั้งหมด: ${total} บาท`;
+        navigator.clipboard.writeText(msg).then(() => showToast("📋 คัดลอกรายชื่อสำเร็จ", "success")).catch(e => showToast("⚠️ ไม่สามารถคัดลอกอัตโนมัติได้", "error"));
     }
     
     function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
