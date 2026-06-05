@@ -538,9 +538,9 @@
                     if (localStorage.getItem('c_admin_' + userUid) === 'true') { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
                 } catch(e) {}
 
-                // 🌟 ปิดหน้าโหลดรวม แล้วบังคับเปิดหน้าแอดมินทันที
+                // 🌟 ปิดหน้าโหลดรวม แล้วเปิดหน้าแรกให้เห็นรูปโปรไฟล์ทันที (ไม่ต้องรอหลังบ้าน)
                 document.getElementById('loadingSec').style.display = 'none';
-                switchTab('admin');
+                document.getElementById('checkinTab').style.display = 'block';
 
                 // 🌟 ย้ายการเช็คคู่มือมาไว้ตรงนี้ ให้เด้งทันทีไม่ต้องรอเซิร์ฟเวอร์ (User Experience ดีขึ้น)
                 try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
@@ -590,15 +590,10 @@
             
             if (result.isAdmin) { 
                 isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; 
-                // 🚀 โหลดข้อมูลแอดมินทันทีที่เช็คสิทธิ์เสร็จ
-                if (document.getElementById('adminTab').style.display === 'block') { loadAdminData(); }
             } else { 
                 isAdminGlobal = false; document.getElementById('tabAdminBtn').style.display = 'none'; 
                 // 🛡️ กันเหนียว: ถ้าโดนปลดสิทธิ์แต่แอบกดเข้าแท็บแอดมินไปแล้ว ให้เด้งกลับหน้าแรกทันที
-                if (document.getElementById('adminTab').style.display === 'block') { 
-                    switchTab('checkin'); 
-                    alert("⚠️ คุณไม่มีสิทธิ์เข้าหน้าแอดมิน!\n\nกรุณานำ UID ด้านล่างไปใส่ในไฟล์ Code.gs (ตัวแปร ADMIN_UIDS):\n\n" + userUid);
-                }
+                if (document.getElementById('adminTab').style.display === 'block') { switchTab('checkin'); }
             }
 
             if (result.checkedIn) { renderPersonalDashboard(result); } 
@@ -1152,7 +1147,7 @@
                     let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold; word-break: break-all;"> [หมายเหตุ: ${a.note}]</span>` : '';
                     let revertBtn = "";
                     if ((isToday || allowEditHistory) && a.status.includes("✅") && a.cost > 0 && !a.status.includes("ฟรี") && !a.status.includes("เหมาจ่าย") && !a.status.includes("ระบบ")) {
-                        if (a.slipUrl && a.slipUrl !== "-") revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'revertToPending', this)">↩️ ดึงกลับรอตรวจ</button> <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectSlip', this)">❌ ปฏิเสธสลิป</button>`;
+                        if (a.slipUrl && a.slipUrl !== "-") revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'revertToPending', this)">↩️ ดึงกลับรอตรวจ</button>`;
                         else revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>`;
                     }
                     // เพิ่มคลาส admin-all-item สำหรับใช้กับระบบค้นหา
@@ -1350,11 +1345,10 @@
                 document.getElementById('modalRejectBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'rejectSlip', this); };
                 document.getElementById('modalRejectBtn').disabled = false;
             } else if (status.includes("✅") && !status.includes("ฟรี") && !status.includes("เหมาจ่าย") && !status.includes("ระบบ")) {
-                document.getElementById('modalAdminActionArea').style.display = 'block';
-                document.getElementById('modalApproveBtn').style.display = 'none'; // ซ่อนปุ่มอนุมัติ (เพราะรับเงินไปแล้ว)
-                document.getElementById('modalRejectBtn').innerText = "❌ ปฏิเสธสลิป (ดึงยอดกลับ)";
-                document.getElementById('modalRejectBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'rejectSlip', this); };
-                document.getElementById('modalRejectBtn').disabled = false;
+                // 🚨 FIX: ปิดการแสดงปุ่ม Action ใน Modal เมื่อเปิดจากรายการที่จ่ายเงินแล้ว
+                // เพื่อป้องกันการ Reject Slip ที่อาจกระทบกับคนอื่นในกลุ่มโดยไม่ได้ตั้งใจ
+                // ให้ใช้ปุ่ม "ดึงกลับรอตรวจ" จากหน้ารวมแทน
+                document.getElementById('modalAdminActionArea').style.display = 'none';
             } else { document.getElementById('modalAdminActionArea').style.display = 'none'; }
             
             let imgEl = document.getElementById('modalImg');
