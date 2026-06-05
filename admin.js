@@ -195,6 +195,10 @@
                     allHTML += `<div class="admin-all-item" style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
                 });
             document.getElementById('adminAllArea').innerHTML = allHTML ? `<div class="fade-in">${allHTML}</div>` : "ยังไม่มีข้อมูล";
+            } else {
+                showToast(r.message || "เกิดข้อผิดพลาด", "error");
+                document.getElementById('adminAllArea').innerHTML = `<div style="color:#ef4444; padding:10px; text-align:center;">⚠️ ${r.message || 'โหลดข้อมูลไม่สำเร็จ'}</div>`;
+                if (isToday) document.getElementById('adminUnpaidArea').innerHTML = `<div style="color:#ef4444; padding:10px; text-align:center;">⚠️ ${r.message || 'โหลดข้อมูลไม่สำเร็จ'}</div>`;
             }
         } catch (e) { 
             console.error("[ADM_01] Render Admin UI Error:", e);
