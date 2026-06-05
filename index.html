@@ -1147,7 +1147,7 @@
                     let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold; word-break: break-all;"> [หมายเหตุ: ${a.note}]</span>` : '';
                     let revertBtn = "";
                     if ((isToday || allowEditHistory) && a.status.includes("✅") && a.cost > 0 && !a.status.includes("ฟรี") && !a.status.includes("เหมาจ่าย") && !a.status.includes("ระบบ")) {
-                        if (a.slipUrl && a.slipUrl !== "-") revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'revertToPending', this)">↩️ ดึงกลับรอตรวจ</button>`;
+                        if (a.slipUrl && a.slipUrl !== "-") revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'revertToPending', this)">↩️ ดึงกลับรอตรวจ</button> <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectSlip', this)">❌ ปฏิเสธสลิป</button>`;
                         else revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>`;
                     }
                     // เพิ่มคลาส admin-all-item สำหรับใช้กับระบบค้นหา
@@ -1180,13 +1180,16 @@
     }
 
     async function adminAction(targetTime, targetUid, manageType, btnElement) {
-        if (manageType === 'delete' && !confirm("⚠️ ยืนยันการลบรายชื่อ? (หากลบชื่อเจ้าภาพ เพื่อนทั้งหมดจะถูกลบตามไปด้วย)")) return;
-        if (manageType === 'write_off' && !confirm("⚠️ ยืนยันการยกยอดหนี้สูญให้รายการนี้? (ยอดจะกลายเป็น 0 บาท)")) return;
-        if (manageType === 'rejectDelete' && !confirm("⚠️ ปฏิเสธคำขอลบ และเตะกลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return;
-        if (manageType === 'rejectSlip' && !confirm("⚠️ ยืนยันการปฏิเสธสลิป?\n(สลิปจะถูกลบ และสถานะจะแจ้งผู้ใช้ว่า 'สลิปไม่ถูกต้อง')")) return;
-        if (manageType === 'revertToPending' && !confirm("⚠️ ดึงรายการนี้กลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return;
-        if (manageType === 'rejectPaySingle' && !confirm("⚠️ ยืนยันดึงกลับไปเป็น 'ยังไม่จ่าย' ใช่หรือไม่?")) return;
-        btnElement.disabled = true; btnElement.innerText = "⏳...";
+        if (manageType === 'delete' && !confirm("⚠️ ยืนยันการลบรายชื่อ? (หากลบชื่อเจ้าภาพ เพื่อนทั้งหมดจะถูกลบตามไปด้วย)")) return
+        if (manageType === 'write_off' && !confirm("⚠️ ยืนยันการยกยอดหนี้สูญให้รายการนี้? (ยอดจะกลายเป็น 0 บาท)")) return
+        if (manageType === 'rejectDelete' && !confirm("⚠️ ปฏิเสธคำขอลบ และเตะกลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return
+        if (manageType === 'rejectSlip' && !confirm("⚠️ ยืนยันการปฏิเสธสลิป?\n(สลิปจะถูกลบ และสถานะจะแจ้งผู้ใช้ว่า 'สลิปไม่ถูกต้อง')")) return
+        if (manageType === 'revertToPending' && !confirm("⚠️ ดึงรายการนี้กลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return
+        if (manageType === 'rejectPaySingle' && !confirm("⚠️ ยืนยันดึงกลับไปเป็น 'ยังไม่จ่าย' ใช่หรือไม่?")) return
+        
+        const originalBtnHTML = btnElement.innerHTML;
+        btnElement.disabled = true; 
+        btnElement.innerHTML = "⏳...";
         
         // 🛡️ บล็อกปุ่มแอดมินทั้งหมดชั่วคราว ป้องกันการกดรัวๆ จนคิว GAS เต็ม
         document.querySelectorAll('.admin-action-btn').forEach(b => b.style.pointerEvents = 'none');
@@ -1194,15 +1197,24 @@
         try {
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminManage", uid: userUid, targetTime: targetTime, targetUid: targetUid, manageType: manageType, targetDate: currentViewDate }) });
             let r = await res.json();
-            if (r.status === "success") { btnElement.innerText = "✅ สำเร็จ"; closeSlipModal(); setTimeout(currentViewDate ? fetchHistory : loadAdminData, 500); } 
+            if (r.status === "success") { 
+                btnElement.innerHTML = "✅ สำเร็จ"; 
+                closeSlipModal(); 
+                setTimeout(currentViewDate ? fetchHistory : loadAdminData, 500); 
+            } 
             else { 
-                showToast(r.message, "error"); btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด"; 
-                document.querySelectorAll('.admin-action-btn').forEach(b => b.style.pointerEvents = 'auto');
+                showToast(r.message, "error"); 
+                btnElement.innerHTML = originalBtnHTML; 
             }
         } catch (e) { 
             console.error("[ACT_01] Admin Action Error:", e);
             showToast("⚠️ เชื่อมต่อล้มเหลว กรุณาลองใหม่ [ACT_01]", "error"); 
-            btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด";
+            btnElement.innerHTML = originalBtnHTML;
+        } finally {
+            // 🌟 FIX: ปลดล็อกปุ่มเสมอ เพื่อป้องกัน UI ค้าง
+            if (btnElement.innerHTML !== "✅ สำเร็จ") {
+                btnElement.disabled = false;
+            }
             document.querySelectorAll('.admin-action-btn').forEach(b => b.style.pointerEvents = 'auto');
         }
     }
@@ -1345,10 +1357,11 @@
                 document.getElementById('modalRejectBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'rejectSlip', this); };
                 document.getElementById('modalRejectBtn').disabled = false;
             } else if (status.includes("✅") && !status.includes("ฟรี") && !status.includes("เหมาจ่าย") && !status.includes("ระบบ")) {
-                // 🚨 FIX: ปิดการแสดงปุ่ม Action ใน Modal เมื่อเปิดจากรายการที่จ่ายเงินแล้ว
-                // เพื่อป้องกันการ Reject Slip ที่อาจกระทบกับคนอื่นในกลุ่มโดยไม่ได้ตั้งใจ
-                // ให้ใช้ปุ่ม "ดึงกลับรอตรวจ" จากหน้ารวมแทน
-                document.getElementById('modalAdminActionArea').style.display = 'none';
+                document.getElementById('modalAdminActionArea').style.display = 'block';
+                document.getElementById('modalApproveBtn').style.display = 'none'; // ซ่อนปุ่มอนุมัติ (เพราะรับเงินไปแล้ว)
+                document.getElementById('modalRejectBtn').innerText = "❌ ปฏิเสธสลิป (ดึงยอดกลับ)";
+                document.getElementById('modalRejectBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'rejectSlip', this); };
+                document.getElementById('modalRejectBtn').disabled = false;
             } else { document.getElementById('modalAdminActionArea').style.display = 'none'; }
             
             let imgEl = document.getElementById('modalImg');
