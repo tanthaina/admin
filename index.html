@@ -435,7 +435,7 @@
     }
 
     // 🚨 Global Fetch Interceptor (เกราะป้องกันแอปหมุนค้างตลอดกาลในทุกๆ จุด)
-    const originalFetch = window.fetch;
+    const originalFetch = window.fetch.bind(window);
     window.fetch = async function(url, options) {
         if (url && typeof url === 'string' && url.includes("script.google.com")) {
             options = options || {};
@@ -505,7 +505,7 @@
         try {
             // 🛡️ ป้องกัน LIFF ค้างตลอดกาลด้วย Promise.race (ตัดจบใน 12 วินาที)
             const liffInit = liff.init({ liffId: MY_LIFF_ID });
-            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF Init Timeout")), 12000));
+            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF Init Timeout")), 20000));
             await Promise.race([liffInit, initTimeout]);
             
             if (liff.isLoggedIn()) {
@@ -540,7 +540,12 @@
 
                 // 🌟 ปิดหน้าโหลดรวม แล้วเปิดหน้าแรกให้เห็นรูปโปรไฟล์ทันที (ไม่ต้องรอหลังบ้าน)
                 document.getElementById('loadingSec').style.display = 'none';
-                document.getElementById('checkinTab').style.display = 'block';
+                if (isAdminGlobal) {
+                    switchTab('admin');
+                    loadAdminData();
+                } else {
+                    document.getElementById('checkinTab').style.display = 'block';
+                }
 
                 // 🌟 ย้ายการเช็คคู่มือมาไว้ตรงนี้ ให้เด้งทันทีไม่ต้องรอเซิร์ฟเวอร์ (User Experience ดีขึ้น)
                 try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
@@ -590,6 +595,11 @@
             
             if (result.isAdmin) { 
                 isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; 
+                // 🌟 เด้งเข้าแท็บแอดมินอัตโนมัติเมื่อตรวจสอบสิทธิ์ผ่าน
+                if (!window.hasSwitchedTabManually && document.getElementById('adminTab').style.display !== 'block') {
+                    switchTab('admin');
+                    loadAdminData();
+                }
             } else { 
                 isAdminGlobal = false; document.getElementById('tabAdminBtn').style.display = 'none'; 
                 // 🛡️ กันเหนียว: ถ้าโดนปลดสิทธิ์แต่แอบกดเข้าแท็บแอดมินไปแล้ว ให้เด้งกลับหน้าแรกทันที
@@ -740,7 +750,7 @@
     }
 
     function switchTab(target) {
-        window.hasSwitchedTabManually = true; // 🌟 จำไว้ว่าผู้ใช้กดเปลี่ยนแท็บเองแล้ว จะได้ไม่โดนบังคับเด้งสลับ
+        window.hasSwitchedTabManually = true; // 🌟 จำไว้ว่าผู้ใช้กดเปลี่ยนแท็บเองแล้ว
         ['checkin', 'dashboard', 'admin'].forEach(t => {
             let tab = document.getElementById(t + 'Tab');
             if (t === target) {
@@ -1079,6 +1089,9 @@
                 globalUnpaidList = r.unpaidList; document.getElementById('copyDebtBtn').style.display = (r.unpaidList.length > 0) ? "block" : "none";
 
                 if (isToday) {
+                    let selectAllCb = document.getElementById('selectAllCb');
+                    if (selectAllCb) selectAllCb.checked = false;
+                    if (typeof updateBatchBar === 'function') updateBatchBar(); // ซ่อนปุ่ม Batch ถ้ารีโหลดใหม่
                     let unpaidArea = document.getElementById('adminUnpaidArea');
                     let upHTML = "";
                     const groups = r.unpaidGroups || {};
@@ -1106,6 +1119,7 @@
 
                             upHTML += `<div class="admin-group-card">
                                 <div class="admin-group-header">
+                                    <input type="checkbox" class="batch-approve-cb" data-time="${firstMember.time}" data-uid="${firstMember.uid}" onchange="updateBatchBar()" style="width:20px; height:20px; flex-shrink:0; accent-color:#16a34a;">
                                     <img src="${slipThumbUrl}" class="admin-group-slip-thumb" onclick="openSlipModal('${group.slipUrl}', '${firstMember.time}', '${firstMember.uid}', '⏳ รอตรวจ')">
                                     <div class="admin-group-details">
                                         <b style="color:#8b5cf6">ยอดรวมสลิป: ${group.totalCost} บาท</b>
@@ -1125,7 +1139,7 @@
                             let reqDeleteBtn = u.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${u.time}', '${u.uid}', 'delete', this)">🗑️ อนุมัติลบ</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
                             let promoteBtn = (!u.uid.includes("FRIEND_OF_") && u.name !== "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${u.time}', '${u.uid}', 'promote_yearly', this)">👑 รายปี</button>` : '';
                             let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold; word-break: break-all;">📝 หมายเหตุ: ${u.note}</div>` : '';
-                            upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${reqDeleteBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ รับ</button> ${promoteBtn} <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div>`;
+                            upHTML += `<div class="admin-individual-card"><div style="display:flex; align-items:flex-start; gap:8px;"><input type="checkbox" class="batch-approve-cb" data-time="${u.time}" data-uid="${u.uid}" onchange="updateBatchBar()" style="width:20px; height:20px; flex-shrink:0; margin-top:3px; accent-color:#16a34a;"><div style="flex:1;"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${reqDeleteBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ รับ</button> ${promoteBtn} <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div></div></div>`;
                         }
                     }
                 unpaidArea.innerHTML = upHTML ? `<div class="fade-in">${upHTML}</div>` : "ไม่มีรายการค้างชำระ";
@@ -1372,6 +1386,27 @@
         } else { window.open(driveUrl, '_blank'); } 
     }
     
+    function closeSlipModal() {
+        document.getElementById('slipModal').style.display = 'none';
+        document.getElementById('modalImg').src = "";
+        currentModalActiveRow = null;
+    }
+
+    function copyDebtList() {
+        if (!globalUnpaidList || globalUnpaidList.length === 0) {
+            showToast("ไม่มีรายการค้างชำระ", "error");
+            return;
+        }
+        let msg = "🔴 *รายชื่อยอดค้างชำระ*\n\n";
+        let total = 0;
+        globalUnpaidList.forEach(item => {
+            msg += `- ${item.name} (${item.cost} บ.)\n`;
+            total += parseInt(item.cost) || 0;
+        });
+        msg += `\n💰 รวมทั้งหมด: ${total} บาท`;
+        navigator.clipboard.writeText(msg).then(() => showToast("📋 คัดลอกรายชื่อสำเร็จ", "success")).catch(e => showToast("⚠️ ไม่สามารถคัดลอกอัตโนมัติได้", "error"));
+    }
+
     function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
     function closeManualModal() { 
         document.getElementById('manualModal').style.display = 'none'; 
@@ -1402,6 +1437,56 @@
                 document.getElementById('publicVipListArea').innerHTML = html;
             } else { document.getElementById('publicVipListArea').innerHTML = `<div style="color:red; text-align:center;">${r.message || 'โหลดข้อมูลล้มเหลว'}</div>`; }
         } catch (e) { document.getElementById('publicVipListArea').innerHTML = '<div style="color:red; text-align:center;">⚠️ โหลดข้อมูลล้มเหลว กรุณาลองใหม่</div>'; }
+    }
+
+    // 🌟 ระบบจัดการ Checkbox เลือกสลิปรวดเดียว (Batch Approve)
+    function updateBatchBar() {
+        const cbs = document.querySelectorAll('.batch-approve-cb:checked');
+        const bar = document.getElementById('batchApproveBar');
+        if (cbs.length > 0) {
+            bar.style.display = 'flex';
+            document.getElementById('batchApproveTxt').innerText = `เลือก ${cbs.length} รายการ`;
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+
+    function toggleSelectAllBatch(isChecked) {
+        document.querySelectorAll('.batch-approve-cb').forEach(cb => cb.checked = isChecked);
+        updateBatchBar();
+    }
+
+    async function batchApproveSlips() {
+        const cbs = document.querySelectorAll('.batch-approve-cb:checked');
+        if (cbs.length === 0) return;
+        if (!confirm(`⚠️ ยืนยันการ "อนุมัติรับเงิน" ทั้งหมด ${cbs.length} รายการที่เลือกใช่หรือไม่?`)) return;
+
+        const batchBtn = document.getElementById('batchApproveBtn');
+        const originalText = batchBtn.innerText;
+        batchBtn.disabled = true;
+        
+        // บล็อกไม่ให้ผู้ใช้กดยกเลิกติ๊กระหว่างที่รัน
+        document.querySelectorAll('.batch-approve-cb').forEach(cb => cb.disabled = true);
+        const selectAllCb = document.getElementById('selectAllCb');
+        if (selectAllCb) selectAllCb.disabled = true;
+
+        let successCount = 0;
+        for (let i = 0; i < cbs.length; i++) {
+            let cb = cbs[i];
+            batchBtn.innerText = `⏳ กำลังทำ ${i+1}/${cbs.length}...`;
+            try {
+                let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminManage", uid: userUid, targetTime: cb.dataset.time, targetUid: cb.dataset.uid, manageType: "confirmPay", targetDate: currentViewDate }) });
+                let r = await res.json();
+                if (r.status === "success") successCount++;
+            } catch(e) { console.error("Batch Approve Error on item", i, e); }
+        }
+
+        showToast(`✅ อนุมัติสำเร็จ ${successCount}/${cbs.length} รายการ`, "success");
+        batchBtn.innerText = originalText;
+        batchBtn.disabled = false;
+        if (selectAllCb) selectAllCb.disabled = false;
+        
+        setTimeout(currentViewDate ? fetchHistory : loadAdminData, 500); 
     }
 </script>
 </body>
