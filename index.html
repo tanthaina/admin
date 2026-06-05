@@ -6,7 +6,6 @@
     <title>🏸 ระบบจัดการชมรมแบดมินตันตากฟ้า</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="./admin.js"></script>
     <!-- 
     ==========================================
     📝 DEV NOTES & POST-MORTEM (ฝั่งหน้าบ้าน):
@@ -539,9 +538,9 @@
                     if (localStorage.getItem('c_admin_' + userUid) === 'true') { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
                 } catch(e) {}
 
-                // 🌟 ปิดหน้าโหลดรวม แล้วบังคับเปิดหน้าแอดมินทันที
+                // 🌟 ปิดหน้าโหลดรวม แล้วเปิดหน้าแรกให้เห็นรูปโปรไฟล์ทันที (ไม่ต้องรอหลังบ้าน)
                 document.getElementById('loadingSec').style.display = 'none';
-                switchTab('admin');
+                document.getElementById('checkinTab').style.display = 'block';
 
                 // 🌟 ย้ายการเช็คคู่มือมาไว้ตรงนี้ ให้เด้งทันทีไม่ต้องรอเซิร์ฟเวอร์ (User Experience ดีขึ้น)
                 try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
@@ -591,10 +590,15 @@
             
             if (result.isAdmin) { 
                 isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; 
+                // 🚀 โหลดข้อมูลแอดมินทันทีที่เช็คสิทธิ์เสร็จ
+                if (document.getElementById('adminTab').style.display === 'block') { loadAdminData(); }
             } else { 
                 isAdminGlobal = false; document.getElementById('tabAdminBtn').style.display = 'none'; 
                 // 🛡️ กันเหนียว: ถ้าโดนปลดสิทธิ์แต่แอบกดเข้าแท็บแอดมินไปแล้ว ให้เด้งกลับหน้าแรกทันที
-                if (document.getElementById('adminTab').style.display === 'block') { switchTab('checkin'); }
+                if (document.getElementById('adminTab').style.display === 'block') { 
+                    switchTab('checkin'); 
+                    alert("⚠️ คุณไม่มีสิทธิ์เข้าหน้าแอดมิน!\n\nกรุณานำ UID ด้านล่างไปใส่ในไฟล์ Code.gs (ตัวแปร ADMIN_UIDS):\n\n" + userUid);
+                }
             }
 
             if (result.checkedIn) { renderPersonalDashboard(result); } 
