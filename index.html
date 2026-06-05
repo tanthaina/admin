@@ -126,7 +126,7 @@
             
             <div style="text-align: left; margin-top: 10px;">
                 <label style="font-size: 13px; font-weight: bold; color: #374151;">📸 แนบรูปสลิปหลักฐาน:</label>
-                <input type="file" id="slipFileInput" accept="image/*" style="margin-top: 5px; background: white; touch-action: manipulation;" onchange="previewSlip(event)">
+                <input type="file" id="slipFileInput" accept="image/*" style="margin-top: 5px; background: white; touch-action: manipulation;" onclick="this.value=null;" onchange="previewSlip(event)">
                 <!-- เพิ่มกรอบแสดงพรีวิวสลิป -->
                 <img id="slipPreviewImg" style="display: none; width: 100%; max-height: 250px; object-fit: contain; margin-top: 10px; border: 2px dashed #d1d5db; border-radius: 8px; background: #f9fafb; padding: 5px; box-sizing: border-box;">
                 
@@ -463,7 +463,7 @@
             const file = event.target.files[0];
             const preview = document.getElementById('slipPreviewImg');
             if (file) {
-                if (preview.src && preview.src.startsWith('blob:')) { URL.revokeObjectURL(preview.src); } // 🛡️ คืนหน่วยความจำให้มือถือ ป้องกันแอป LINE เด้งปิดตัวเอง
+                if (preview.src) { URL.revokeObjectURL(preview.src); } // 🛡️ คืนหน่วยความจำให้มือถือ ป้องกันแอป LINE เด้งปิดตัวเอง
                 preview.src = URL.createObjectURL(file);
                 preview.style.display = 'block';
             } else {
@@ -740,6 +740,7 @@
     }
 
     function switchTab(target) {
+        window.hasSwitchedTabManually = true; // 🌟 จำไว้ว่าผู้ใช้กดเปลี่ยนแท็บเองแล้ว จะได้ไม่โดนบังคับเด้งสลับ
         ['checkin', 'dashboard', 'admin'].forEach(t => {
             let tab = document.getElementById(t + 'Tab');
             if (t === target) {
