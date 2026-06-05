@@ -126,7 +126,7 @@
             
             <div style="text-align: left; margin-top: 10px;">
                 <label style="font-size: 13px; font-weight: bold; color: #374151;">📸 แนบรูปสลิปหลักฐาน:</label>
-                <input type="file" id="slipFileInput" accept="image/*" style="margin-top: 5px; background: white; touch-action: manipulation;" onclick="this.value=null;" onchange="previewSlip(event)">
+                <input type="file" id="slipFileInput" accept="image/*" style="margin-top: 5px; background: white; touch-action: manipulation;" onchange="previewSlip(event)">
                 <!-- เพิ่มกรอบแสดงพรีวิวสลิป -->
                 <img id="slipPreviewImg" style="display: none; width: 100%; max-height: 250px; object-fit: contain; margin-top: 10px; border: 2px dashed #d1d5db; border-radius: 8px; background: #f9fafb; padding: 5px; box-sizing: border-box;">
                 
@@ -463,7 +463,7 @@
             const file = event.target.files[0];
             const preview = document.getElementById('slipPreviewImg');
             if (file) {
-                if (preview.src) { URL.revokeObjectURL(preview.src); } // 🛡️ คืนหน่วยความจำให้มือถือ ป้องกันแอป LINE เด้งปิดตัวเอง
+                if (preview.src && preview.src.startsWith('blob:')) { URL.revokeObjectURL(preview.src); } // 🛡️ คืนหน่วยความจำให้มือถือ ป้องกันแอป LINE เด้งปิดตัวเอง
                 preview.src = URL.createObjectURL(file);
                 preview.style.display = 'block';
             } else {
@@ -707,20 +707,14 @@
             if (res.isWaiting && res.hasUnpaid) {
                 btnPay.disabled = true; btnPay.style.backgroundColor = "#9ca3af";
                 warnTxt.style.display = 'block';
-                warnTxt.style.color = "#ea580c";
-                warnTxt.innerText = "⏳ กรุณารอแอดมินตรวจสลิปใบก่อนหน้าให้เสร็จ ถึงจะส่งสลิปยอดใหม่ได้ครับ";
                 btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
             } else if (res.isWaiting) {
-                btnPay.disabled = false; btnPay.style.backgroundColor = "#eab308";
-                warnTxt.style.display = 'block';
-                warnTxt.style.color = "#16a34a";
-                warnTxt.innerText = "✅ ระบบได้รับสลิปแล้ว หากอัพผิดแก้ไขใหม่ได้ครับ";
-                btnPay.innerText = "🔄 อัพสลิปใหม่ (แทนที่ใบเดิม)";
+                btnPay.disabled = true; btnPay.style.backgroundColor = "#eab308";
+                warnTxt.style.display = 'none';
+                btnPay.innerText = "⏳ รอแอดมินตรวจสลิปใบล่าสุด";
             } else {
                 btnPay.disabled = false; btnPay.style.backgroundColor = "var(--primary)";
                 warnTxt.style.display = 'none';
-                warnTxt.style.color = "#ea580c";
-                warnTxt.innerText = "⏳ กรุณารอแอดมินตรวจสลิปใบก่อนหน้าให้เสร็จ ถึงจะส่งสลิปยอดใหม่ได้ครับ";
                 btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
             }
         } else { document.getElementById('paymentSec').style.display = 'none'; }
@@ -892,8 +886,8 @@
                 document.getElementById('slipFileInput').value = ""; document.getElementById('paymentNoteInput').value = "";
                 // ซ่อน Preview เมื่อส่งสำเร็จ
                 document.getElementById('slipPreviewImg').style.display = 'none';
-                showToast("✅ อัปโหลดสลิปสำเร็จ");
                 await refreshPersonalState();
+                showToast("✅ อัปโหลดสลิปสำเร็จ");
             } else { throw new Error(result.message); }
         } catch (e) { 
             console.error("[PAY_01] Payment Confirm Error:", e);
@@ -1096,7 +1090,7 @@
                                 const slipThumbUrl = matchId ? `https://drive.google.com/thumbnail?id=${matchId[0]}&sz=w100` : "";
                             let membersHtml = "";
                             group.members.forEach(m => {
-                                let reqDeleteBtn = m.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'delete', this)">🗑️ ลบคนนี้</button> <button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectSlip', this)">↩️ ดึงกลับค้างจ่าย</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
+                                let reqDeleteBtn = m.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'delete', this)">🗑️ อนุมัติลบ</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
                                 let promoteBtn = (!m.uid.includes("FRIEND_OF_") && m.name !== "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${m.time}', '${m.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${m.time}', '${m.uid}', 'promote_yearly', this)">👑 รายปี</button>` : '';
                                 membersHtml += `<div class="admin-sub-item" style="display:block;">
                                     <div style="margin-bottom:4px;"><span>${m.name} (${m.cost} บ.)</span> <span style="color:#ef4444; font-size:11px; font-weight:bold; margin-left:5px;">[${m.status}]</span></div>
@@ -1127,7 +1121,7 @@
                             </div>`;
                         } else { // Individual, no slip
                             const u = group.members[0];
-                            let reqDeleteBtn = u.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${u.time}', '${u.uid}', 'delete', this)">🗑️ ลบคนนี้</button> <button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectSlip', this)">↩️ ดึงกลับค้างจ่าย</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
+                            let reqDeleteBtn = u.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${u.time}', '${u.uid}', 'delete', this)">🗑️ อนุมัติลบ</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
                             let promoteBtn = (!u.uid.includes("FRIEND_OF_") && u.name !== "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${u.time}', '${u.uid}', 'promote_yearly', this)">👑 รายปี</button>` : '';
                             let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold; word-break: break-all;">📝 หมายเหตุ: ${u.note}</div>` : '';
                             upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${reqDeleteBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ รับ</button> ${promoteBtn} <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div>`;
@@ -1377,27 +1371,6 @@
         } else { window.open(driveUrl, '_blank'); } 
     }
     
-    function closeSlipModal() {
-        document.getElementById('slipModal').style.display = 'none';
-        document.getElementById('modalImg').src = "";
-        currentModalActiveRow = null;
-    }
-
-    function copyDebtList() {
-        if (!globalUnpaidList || globalUnpaidList.length === 0) {
-            showToast("ไม่มีรายการค้างชำระ", "error");
-            return;
-        }
-        let msg = "🔴 *รายชื่อยอดค้างชำระ*\n\n";
-        let total = 0;
-        globalUnpaidList.forEach(item => {
-            msg += `- ${item.name} (${item.cost} บ.)\n`;
-            total += parseInt(item.cost) || 0;
-        });
-        msg += `\n💰 รวมทั้งหมด: ${total} บาท`;
-        navigator.clipboard.writeText(msg).then(() => showToast("📋 คัดลอกรายชื่อสำเร็จ", "success")).catch(e => showToast("⚠️ ไม่สามารถคัดลอกอัตโนมัติได้", "error"));
-    }
-
     function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
     function closeManualModal() { 
         document.getElementById('manualModal').style.display = 'none'; 
