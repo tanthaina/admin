@@ -538,9 +538,9 @@
                     if (localStorage.getItem('c_admin_' + userUid) === 'true') { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
                 } catch(e) {}
 
-                // 🌟 ปิดหน้าโหลดรวม แล้วเปิดหน้าแรกให้เห็นรูปโปรไฟล์ทันที (ไม่ต้องรอหลังบ้าน)
+                // 🌟 ปิดหน้าโหลดรวม แล้วบังคับเปิดหน้าแอดมินทันที
                 document.getElementById('loadingSec').style.display = 'none';
-                document.getElementById('checkinTab').style.display = 'block';
+                switchTab('admin');
 
                 // 🌟 ย้ายการเช็คคู่มือมาไว้ตรงนี้ ให้เด้งทันทีไม่ต้องรอเซิร์ฟเวอร์ (User Experience ดีขึ้น)
                 try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
