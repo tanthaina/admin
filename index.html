@@ -482,7 +482,7 @@
         console.error("[GLOBAL_PROMISE_ERR] การเชื่อมต่อถูกปฏิเสธ:", e.reason);
     });
 
-    const MY_LIFF_ID = "ใส่_LIFF_ID_ของแอดมินที่ได้มาใหม่ตรงนี้"; // 🚨 เปลี่ยนเป็น LIFF ID ของแอดมิน
+    const MY_LIFF_ID = "2010144915-4UBZghew"; // 🚨 เปลี่ยนเป็น LIFF ID ของแอดมิน
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXlzflIRUyuXB2SPwuG64OnglXKlcljR2cZwXXB4m__HVPbxW2xwSu1tSQrvgFG3SZxQ/exec";
 
     let userUid = ""; let userDisplayName = "";
@@ -494,12 +494,6 @@
     let monthlyChartInstance = null;
 
     function getApiUrl() { return GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime(); }
-
-    // 🌟 เปิดแอปแอดมินแยกต่างหาก
-    function openAdminApp() {
-        // TODO: นำลิงก์ LIFF ID ของ Admin มาใส่ที่นี่ (สร้างใหม่ใน LINE Developers)
-        liff.openWindow({ url: "https://liff.line.me/xxxx-ADMIN", external: false });
-    }
 
     function showToast(msg, type="success") {
         let tb = document.getElementById("toastBox");
@@ -545,9 +539,9 @@
                     if (localStorage.getItem('c_admin_' + userUid) === 'true') { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
                 } catch(e) {}
 
-                // 🌟 ปิดหน้าโหลดรวม แล้วเปิดหน้าแรกให้เห็นรูปโปรไฟล์ทันที (ไม่ต้องรอหลังบ้าน)
+                // 🌟 ปิดหน้าโหลดรวม แล้วบังคับเปิดหน้าแอดมินทันที
                 document.getElementById('loadingSec').style.display = 'none';
-                document.getElementById('checkinTab').style.display = 'block';
+                switchTab('admin');
 
                 // 🌟 ย้ายการเช็คคู่มือมาไว้ตรงนี้ ให้เด้งทันทีไม่ต้องรอเซิร์ฟเวอร์ (User Experience ดีขึ้น)
                 try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
